@@ -12,26 +12,35 @@ def fit_gmm_em(X, K=5, max_iters=100, tol=1e-6):
 
     # Initialize parameters
     np.random.seed(0)
-    mu = np.random.choice(X, K)                      # means
-    sigma2 = np.ones(K) * np.var(X)                  # variances
-    pi = np.ones(K) / K                              # mixture weights
-    gamma = np.zeros((N, K))                         # responsibilities
+    mu = np.random.choice(X, K)                      # initial estimation of representants
+    sigma2 = np.ones(K) * np.var(X)                  # initial estimation of variances.
+    pi = np.ones(K) / K                              # initial estimation of wieghts
+    gamma = np.zeros((N, K))                         # initial estimation of prob_k(sample)
+    #prob_k(sample) is the prob of sample being of class k
 
     log_likelihood_old = -np.inf
 
     for _ in range(max_iters):
         # --- E-step ---
+        #For each class, estimate the probability of each sample being of class k
+        # Basically is the prob of a sample being of class k given our mixture of gaussians.
         for k in range(K):
             gamma[:, k] = pi[k] * gaussian_pdf(X, mu[k], sigma2[k])
         gamma /= np.sum(gamma, axis=1, keepdims=True)
 
         # --- M-step ---
-        N_k = np.sum(gamma, axis=0)
-        pi = N_k / N
+        #gamma_i_k for sample i, is the probability of sample i of being class k.
+        #N_k is the expected value of #samples belonging to class k.
+        N_k = np.sum(gamma, axis=0) #number of expected values of #samples for each class k
+        pi = N_k / N #By dividing by N, here we compute an estimation of the proportion
+                    #of the classes in the data set.
+        #Estimation of the mean per class. Computed as the expected value of the samples
+        #given the estimation of gamma.
         mu = np.sum(gamma * X[:, np.newaxis], axis=0) / N_k
+        #Estimation of the variance.
         sigma2 = np.sum(gamma * (X[:, np.newaxis] - mu)**2, axis=0) / N_k
 
-        # --- Check log-likelihood ---
+        # Compute log-likelyhood. Used to determin convergence
         log_likelihood = np.sum(np.log(np.sum([
             pi[k] * gaussian_pdf(X, mu[k], sigma2[k])
             for k in range(K)
